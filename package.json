@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "A Progressive Web App for weather information",
   "scripts": {
-    "generate-icons": "node generate-icons.js"
+    "generate-icons": "node generate-icons.js",
+    "start": "http-server -p 8080 -c-1"
   },
   "keywords": [
     "weather",
@@ -13,6 +14,7 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "sharp": "^0.32.0"
+    "sharp": "^0.32.0",
+    "http-server": "^14.1.1"
   }
 }
