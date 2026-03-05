@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create PWA Icons</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        p {
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        .preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 15px;
+            margin-top: 30px;
+        }
+        .icon-preview {
+            text-align: center;
+        }
+        .icon-preview canvas {
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+        .icon-preview label {
+            font-size: 12px;
+            color: #666;
+            display: block;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e8f5e9;
+            border-radius: 10px;
+            color: #2e7d32;
+            display: none;
+        }
+        .status.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 PWA Icon Generator</h1>
+        <p>This tool will generate all required PNG icons for your Progressive Web App. Click the button below to create and download all icon sizes.</p>
+        
+        <button onclick="generateAllIcons()">Generate & Download All Icons</button>
+        
+        <div id="status" class="status"></div>
+        
+        <div class="preview" id="preview"></div>
+    </div>
+
+    <script>
+        const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+        
+        function createIcon(size) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            
+            // Create gradient background
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#667eea');
+            gradient.addColorStop(1, '#764ba2');
+            
+            // Draw rounded rectangle background
+            const radius = size * 0.2;
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.moveTo(radius, 0);
+            ctx.lineTo(size - radius, 0);
+            ctx.quadraticCurveTo(size, 0, size, radius);
+            ctx.lineTo(size, size - radius);
+            ctx.quadraticCurveTo(size, size, size - radius, size);
+            ctx.lineTo(radius, size);
+            ctx.quadraticCurveTo(0, size, 0, size - radius);
+            ctx.lineTo(0, radius);
+            ctx.quadraticCurveTo(0, 0, radius, 0);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Draw sun
+            const sunSize = size * 0.25;
+            const sunX = size * 0.5;
+            const sunY = size * 0.35;
+            ctx.fillStyle = '#FFD200';
+            ctx.beginPath();
+            ctx.arc(sunX, sunY, sunSize, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw cloud/smile
+            const cloudY = size * 0.65;
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = size * 0.06;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.arc(size * 0.35, cloudY, size * 0.08, 0, Math.PI * 2);
+            ctx.arc(size * 0.5, cloudY, size * 0.1, 0, Math.PI * 2);
+            ctx.arc(size * 0.65, cloudY, size * 0.08, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Draw smile curve
+            ctx.beginPath();
+            ctx.arc(size * 0.5, cloudY, size * 0.12, 0.2, Math.PI - 0.2);
+            ctx.stroke();
+            
+            return canvas;
+        }
+        
+        function downloadIcon(canvas, filename) {
+            canvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 'image/png');
+        }
+        
+        function generateAllIcons() {
+            const status = document.getElementById('status');
+            const preview = document.getElementById('preview');
+            preview.innerHTML = '';
+            status.textContent = 'Generating icons...';
+            status.className = 'status show';
+            status.style.background = '#fff3cd';
+            status.style.color = '#856404';
+            
+            let generated = 0;
+            
+            sizes.forEach((size, index) => {
+                setTimeout(() => {
+                    const canvas = createIcon(size);
+                    const filename = `icon-${size}x${size}.png`;
+                    
+                    // Add to preview
+                    const previewDiv = document.createElement('div');
+                    previewDiv.className = 'icon-preview';
+                    const label = document.createElement('label');
+                    label.textContent = `${size}x${size}`;
+                    previewDiv.appendChild(canvas);
+                    previewDiv.appendChild(label);
+                    preview.appendChild(previewDiv);
+                    
+                    // Download
+                    downloadIcon(canvas, filename);
+                    
+                    generated++;
+                    if (generated === sizes.length) {
+                        status.textContent = `✅ Successfully generated and downloaded ${sizes.length} icons! Check your downloads folder.`;
+                        status.style.background = '#e8f5e9';
+                        status.style.color = '#2e7d32';
+                    }
+                }, index * 200);
+            });
+        }
+        
+        // Show preview on load
+        window.addEventListener('load', () => {
+            sizes.forEach(size => {
+                const canvas = createIcon(size);
+                const previewDiv = document.createElement('div');
+                previewDiv.className = 'icon-preview';
+                const label = document.createElement('label');
+                label.textContent = `${size}x${size}`;
+                previewDiv.appendChild(canvas);
+                previewDiv.appendChild(label);
+                document.getElementById('preview').appendChild(previewDiv);
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="description" content="A beautiful weather app with 5-day forecast, sunrise/sunset times, and real-time weather updates">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SkyCast">
+    <meta name="mobile-web-app-capable" content="yes">
+    
+    <title>SkyCast</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="icon-192x192.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="icon-192x192.png">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="icon-96x96.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="icon-96x96.png">
+    
+    <link rel="stylesheet" href="style.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+    <div class="app">
+  
+      <h1>SkyCast</h1>
+  
+      <div class="search">
+        <input type="text" id="cityInput" placeholder="Enter city...">
+        <button id="searchBtn">🔍 Search</button>
+        <button id="locationBtn">📍 My Location</button>
+      </div>
+  
+      <div class="toggle">
+        <button id="celsiusBtn" class="active">°C</button>
+        <button id="fahrenheitBtn">°F</button>
+      </div>
+
+      <div id="error" class="error hidden"></div>
+  
+      <div id="loading" class="loading hidden">
+        <div class="spinner"></div>
+        <p>Loading weather data...</p>
+      </div>
+
+      <div id="cacheIndicator" class="cache-indicator hidden">
+        <span class="cache-icon">💾</span>
+        <span class="cache-text">Showing cached data</span>
+      </div>
+  
+      <div id="weatherCard" class="weather-card hidden">
+        <div class="time-display">
+          <div id="currentTime" class="current-time"></div>
+          <div id="currentDate" class="current-date"></div>
+        </div>
+        
+        <div class="main-info">
+          <h2 id="cityName"></h2>
+          <div class="icon-wrapper">
+            <img id="weatherIcon" alt="Weather icon" class="weather-icon" />
+          </div>
+          <h1 id="temperature"></h1>
+          <p id="description"></p>
+        </div>
+
+        <div class="sun-times">
+          <div class="sun-item">
+            <span class="sun-icon">🌅</span>
+            <div class="sun-info">
+              <span class="sun-label">Sunrise</span>
+              <span id="sunrise" class="sun-time"></span>
+            </div>
+          </div>
+          <div class="sun-item">
+            <span class="sun-icon">🌇</span>
+            <div class="sun-info">
+              <span class="sun-label">Sunset</span>
+              <span id="sunset" class="sun-time"></span>
+            </div>
+          </div>
+        </div>
+      
+        <div class="stats">
+          <div class="stat-box">
+            <p>Humidity</p>
+            <h3 id="humidity"></h3>
+          </div>
+      
+          <div class="stat-box">
+            <p>Wind</p>
+            <h3 id="wind"></h3>
+            <div id="windDirection" class="wind-direction"></div>
+          </div>
+      
+          <div class="stat-box">
+            <p>Pressure</p>
+            <h3 id="pressure"></h3>
+          </div>
+      
+          <div class="stat-box">
+            <p>Feels Like</p>
+            <h3 id="feelsLike"></h3>
+          </div>
+        </div>
+      </div>
+
+      <div id="hourlyForecastSection" class="hourly-forecast-section hidden">
+        <h3>24-Hour Forecast</h3>
+        <div id="hourlyForecastContainer" class="hourly-forecast-container"></div>
+      </div>
+
+      <div id="forecastSection" class="forecast-section hidden">
+        <h3>5-Day Forecast</h3>
+        <div id="forecastContainer" class="forecast-container"></div>
+      </div>
+
+      <div id="historySection" class="history-section hidden">
+        <h3>Recent Searches</h3>
+        <ul id="historyList"></ul>
+      </div>
+
+      <div id="radarSection" class="radar-section hidden">
+        <div class="radar-header">
+          <h3>Weather Radar</h3>
+          <button id="toggleRadarBtn" class="radar-toggle-btn">🗺️ Show Map</button>
+        </div>
+        <div id="radarControls" class="radar-controls hidden">
+          <button id="rainRadarBtn" class="radar-layer-btn" data-layer="rain">🌧️ Rain</button>
+          <button id="cloudRadarBtn" class="radar-layer-btn" data-layer="clouds">☁️ Clouds</button>
+          <button id="tempRadarBtn" class="radar-layer-btn" data-layer="temp">🌡️ Temperature</button>
+          <button id="closeRadarBtn" class="close-radar-btn">✕ Close</button>
+        </div>
+        <div id="mapContainer" class="map-container hidden"></div>
+      </div>
+  
+    </div>
+  
+    <script src="script.js"></script>
+</body>
+</html>
