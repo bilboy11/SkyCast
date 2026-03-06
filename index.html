@@ -131,7 +131,10 @@
 
       <div id="radarSection" class="radar-section hidden">
         <div class="radar-header">
-          <h3>Weather Radar</h3>
+          <div class="radar-title-wrapper">
+            <h3>Weather Radar</h3>
+            <span id="radarAnimationIndicator" class="radar-animation-indicator hidden">● Live</span>
+          </div>
           <button id="toggleRadarBtn" class="radar-toggle-btn">🗺️ Show Map</button>
         </div>
         <div id="radarControls" class="radar-controls hidden">
@@ -141,6 +144,48 @@
           <button id="closeRadarBtn" class="close-radar-btn">✕ Close</button>
         </div>
         <div id="mapContainer" class="map-container hidden"></div>
+      </div>
+
+      <!-- Event Planner Section -->
+      <div id="eventPlannerSection" class="event-planner-section">
+        <div class="event-planner-header">
+          <h3>📅 Event Planner</h3>
+          <button id="toggleEventFormBtn" class="event-toggle-btn">+ New Event</button>
+        </div>
+
+        <!-- Event Form -->
+        <div id="eventForm" class="event-form hidden">
+          <input type="text" id="eventTitle" placeholder="Event Title" required>
+          <input type="date" id="eventDate" required>
+          <input type="time" id="eventTime" required>
+          <input type="text" id="eventLocation" placeholder="Location (city name)" required>
+          <div class="event-form-actions">
+            <button id="saveEventBtn" class="event-save-btn">Save Event</button>
+            <button id="cancelEventBtn" class="event-cancel-btn">Cancel</button>
+          </div>
+          <input type="hidden" id="editingEventId">
+        </div>
+
+        <!-- View Toggle -->
+        <div class="event-view-toggle">
+          <button id="listViewBtn" class="view-toggle-btn active">📋 List</button>
+          <button id="calendarViewBtn" class="view-toggle-btn">📅 Calendar</button>
+        </div>
+
+        <!-- Event List View -->
+        <div id="eventListView" class="event-list-view">
+          <div id="eventListContainer" class="event-list-container"></div>
+        </div>
+
+        <!-- Calendar View -->
+        <div id="eventCalendarView" class="event-calendar-view hidden">
+          <div class="calendar-header">
+            <button id="prevMonthBtn" class="calendar-nav-btn">←</button>
+            <h4 id="calendarMonthYear"></h4>
+            <button id="nextMonthBtn" class="calendar-nav-btn">→</button>
+          </div>
+          <div id="calendarContainer" class="calendar-container"></div>
+        </div>
       </div>
   
     </div>

@@ -45,6 +45,7 @@ const rainRadarBtn = document.getElementById("rainRadarBtn");
 const cloudRadarBtn = document.getElementById("cloudRadarBtn");
 const tempRadarBtn = document.getElementById("tempRadarBtn");
 const closeRadarBtn = document.getElementById("closeRadarBtn");
+const radarAnimationIndicator = document.getElementById("radarAnimationIndicator");
 
 let timeUpdateInterval = null;
 let currentTimezone = null;
@@ -66,6 +67,8 @@ let tempLayer = null;
 let currentMarker = null;
 let currentLat = null;
 let currentLon = null;
+let radarAnimationInterval = null;
+let radarFrameIndex = 0;
 
 // Search by city
 searchBtn.addEventListener("click", () => {
@@ -1132,45 +1135,40 @@ function initializeMap(lat, lon) {
 function initializeRadarLayers() {
   const apiKey = "affdbceb55196fa0154c369ff0593d00";
   
-  // Rain radar layer (precipitation) - using correct OpenWeatherMap tile format
-  rainLayer = L.tileLayer(`https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${apiKey}`, {
-    attribution: '© OpenWeatherMap',
-    opacity: 0.75,
-    maxZoom: 19,
-    minZoom: 2,
-    tileSize: 256,
-    zoomOffset: 0,
-    crossOrigin: true,
-    errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
-  });
-
+  // Create radar layers with custom URL function for cache-busting animation
+  const createAnimatedLayer = (layerType) => {
+    return L.tileLayer(`https://tile.openweathermap.org/map/${layerType}/{z}/{x}/{y}.png?appid=${apiKey}`, {
+      attribution: '© OpenWeatherMap',
+      opacity: 0.75,
+      maxZoom: 19,
+      minZoom: 2,
+      tileSize: 256,
+      zoomOffset: 0,
+      crossOrigin: true,
+      errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      // Custom function to add timestamp for cache-busting
+      getTileUrl: function(coords) {
+        const timestamp = Math.floor(Date.now() / 3000); // Update every 3 seconds for smoother animation
+        return `https://tile.openweathermap.org/map/${layerType}/${coords.z}/${coords.x}/${coords.y}.png?appid=${apiKey}&t=${timestamp}`;
+      }
+    });
+  };
+  
+  // Rain radar layer (precipitation)
+  rainLayer = createAnimatedLayer('precipitation_new');
+  
   // Cloud layer
-  cloudLayer = L.tileLayer(`https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${apiKey}`, {
-    attribution: '© OpenWeatherMap',
-    opacity: 0.75,
-    maxZoom: 19,
-    minZoom: 2,
-    tileSize: 256,
-    zoomOffset: 0,
-    crossOrigin: true,
-    errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
-  });
-
+  cloudLayer = createAnimatedLayer('clouds_new');
+  
   // Temperature heat map layer
-  tempLayer = L.tileLayer(`https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${apiKey}`, {
-    attribution: '© OpenWeatherMap',
-    opacity: 0.75,
-    maxZoom: 19,
-    minZoom: 2,
-    tileSize: 256,
-    zoomOffset: 0,
-    crossOrigin: true,
-    errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
-  });
+  tempLayer = createAnimatedLayer('temp_new');
 }
 
 function switchRadarLayer(layerType) {
   if (!map) return;
+
+  // Stop any existing animation
+  stopRadarAnimation();
 
   // Remove current layer
   if (currentLayer && map.hasLayer(currentLayer)) {
@@ -1204,6 +1202,73 @@ function switchRadarLayer(layerType) {
     currentLayer.addTo(map);
     // Refresh the layer to ensure it displays
     map.invalidateSize();
+    
+    // Start animation for the layer
+    startRadarAnimation();
+  }
+}
+
+function startRadarAnimation() {
+  // Stop any existing animation
+  stopRadarAnimation();
+  
+  if (!currentLayer || !map) return;
+  
+  // Show animation indicator
+  if (radarAnimationIndicator) {
+    radarAnimationIndicator.classList.remove("hidden");
+  }
+  
+  // Animate by refreshing tiles periodically
+  // Remove and re-add layer with updated cache-busting parameter
+  radarAnimationInterval = setInterval(() => {
+    if (currentLayer && map && map.hasLayer(currentLayer)) {
+      // Get current layer type
+      let layerType = '';
+      if (currentLayer === rainLayer) layerType = 'precipitation_new';
+      else if (currentLayer === cloudLayer) layerType = 'clouds_new';
+      else if (currentLayer === tempLayer) layerType = 'temp_new';
+      
+      if (layerType) {
+        const apiKey = "affdbceb55196fa0154c369ff0593d00";
+        const timestamp = Date.now(); // Use milliseconds for better cache-busting
+        
+        // Remove current layer
+        map.removeLayer(currentLayer);
+        
+        // Create new layer with updated timestamp
+        const newLayer = L.tileLayer(`https://tile.openweathermap.org/map/${layerType}/{z}/{x}/{y}.png?appid=${apiKey}&t=${timestamp}`, {
+          attribution: '© OpenWeatherMap',
+          opacity: 0.75,
+          maxZoom: 19,
+          minZoom: 2,
+          tileSize: 256,
+          zoomOffset: 0,
+          crossOrigin: true,
+          errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+        });
+        
+        // Update layer reference
+        if (layerType === 'precipitation_new') rainLayer = newLayer;
+        else if (layerType === 'clouds_new') cloudLayer = newLayer;
+        else if (layerType === 'temp_new') tempLayer = newLayer;
+        
+        currentLayer = newLayer;
+        currentLayer.addTo(map);
+      }
+    }
+  }, 3000); // Update every 3 seconds for smooth animation
+}
+
+function stopRadarAnimation() {
+  if (radarAnimationInterval) {
+    clearInterval(radarAnimationInterval);
+    radarAnimationInterval = null;
+  }
+  
+  // Hide animation indicator
+  if (radarAnimationIndicator) {
+    radarAnimationIndicator.classList.add("hidden");
   }
 }
 
@@ -1229,6 +1294,9 @@ function hideRadarMap() {
   mapContainer.classList.add("hidden");
   radarControls.classList.add("hidden");
   toggleRadarBtn.textContent = "🗺️ Show Map";
+  
+  // Stop animation
+  stopRadarAnimation();
   
   // Remove active class from all buttons
   rainRadarBtn.classList.remove("active");
@@ -1306,3 +1374,757 @@ function updateMapLocation(lat, lon) {
   currentLat = lat;
   currentLon = lon;
 }
+
+// ==========================
+// EVENT PLANNER FUNCTIONS
+// ==========================
+
+// DOM Elements
+const eventPlannerSection = document.getElementById("eventPlannerSection");
+const toggleEventFormBtn = document.getElementById("toggleEventFormBtn");
+const eventForm = document.getElementById("eventForm");
+const eventTitle = document.getElementById("eventTitle");
+const eventDate = document.getElementById("eventDate");
+const eventTime = document.getElementById("eventTime");
+const eventLocation = document.getElementById("eventLocation");
+const saveEventBtn = document.getElementById("saveEventBtn");
+const cancelEventBtn = document.getElementById("cancelEventBtn");
+const editingEventId = document.getElementById("editingEventId");
+const listViewBtn = document.getElementById("listViewBtn");
+const calendarViewBtn = document.getElementById("calendarViewBtn");
+const eventListView = document.getElementById("eventListView");
+const eventCalendarView = document.getElementById("eventCalendarView");
+const eventListContainer = document.getElementById("eventListContainer");
+const calendarContainer = document.getElementById("calendarContainer");
+const calendarMonthYear = document.getElementById("calendarMonthYear");
+const prevMonthBtn = document.getElementById("prevMonthBtn");
+const nextMonthBtn = document.getElementById("nextMonthBtn");
+
+let currentCalendarMonth = new Date().getMonth();
+let currentCalendarYear = new Date().getFullYear();
+let reminderIntervals = {};
+
+// Initialize event planner
+function initEventPlanner() {
+  // Set minimum date to today
+  const today = new Date().toISOString().split('T')[0];
+  eventDate.setAttribute('min', today);
+  
+  // Load and render events
+  renderEvents();
+  renderCalendar();
+  
+  // Fetch weather for all existing events
+  const events = getEvents();
+  events.forEach(event => {
+    const eventDateTime = new Date(`${event.date}T${event.time}`);
+    const now = new Date();
+    // Only fetch weather for future events
+    if (eventDateTime > now) {
+      fetchEventWeather(event);
+      setupReminder(event);
+    }
+  });
+  
+  // Event listeners
+  toggleEventFormBtn.addEventListener("click", () => {
+    eventForm.classList.toggle("hidden");
+    if (!eventForm.classList.contains("hidden")) {
+      eventTitle.focus();
+    }
+  });
+  
+  saveEventBtn.addEventListener("click", saveEvent);
+  cancelEventBtn.addEventListener("click", () => {
+    eventForm.classList.add("hidden");
+    resetEventForm();
+  });
+  
+  listViewBtn.addEventListener("click", () => {
+    listViewBtn.classList.add("active");
+    calendarViewBtn.classList.remove("active");
+    eventListView.classList.remove("hidden");
+    eventCalendarView.classList.add("hidden");
+  });
+  
+  calendarViewBtn.addEventListener("click", () => {
+    calendarViewBtn.classList.add("active");
+    listViewBtn.classList.remove("active");
+    eventCalendarView.classList.remove("hidden");
+    eventListView.classList.add("hidden");
+    renderCalendar();
+  });
+  
+  prevMonthBtn.addEventListener("click", () => {
+    currentCalendarMonth--;
+    if (currentCalendarMonth < 0) {
+      currentCalendarMonth = 11;
+      currentCalendarYear--;
+    }
+    renderCalendar();
+  });
+  
+  nextMonthBtn.addEventListener("click", () => {
+    currentCalendarMonth++;
+    if (currentCalendarMonth > 11) {
+      currentCalendarMonth = 0;
+      currentCalendarYear++;
+    }
+    renderCalendar();
+  });
+  
+  // Check reminders every minute
+  setInterval(checkReminders, 60000);
+  checkReminders();
+}
+
+// Event Storage Functions
+function getEvents() {
+  const events = JSON.parse(localStorage.getItem("skycast_events")) || [];
+  return events.sort((a, b) => {
+    const dateA = new Date(`${a.date}T${a.time}`);
+    const dateB = new Date(`${b.date}T${b.time}`);
+    return dateA - dateB;
+  });
+}
+
+function saveEvents(events) {
+  localStorage.setItem("skycast_events", JSON.stringify(events));
+}
+
+function saveEvent() {
+  const title = eventTitle.value.trim();
+  const date = eventDate.value;
+  const time = eventTime.value;
+  const location = eventLocation.value.trim();
+  const eventId = editingEventId.value || Date.now().toString();
+  
+  if (!title || !date || !time || !location) {
+    showError("Please fill in all fields");
+    return;
+  }
+  
+  const events = getEvents();
+  const eventDateTime = new Date(`${date}T${time}`);
+  
+  if (eventDateTime < new Date()) {
+    showError("Event date/time must be in the future");
+    return;
+  }
+  
+  const eventData = {
+    id: eventId,
+    title,
+    date,
+    time,
+    location,
+    createdAt: editingEventId.value ? events.find(e => e.id === eventId)?.createdAt || Date.now() : Date.now()
+  };
+  
+  if (editingEventId.value) {
+    const index = events.findIndex(e => e.id === eventId);
+    if (index !== -1) {
+      events[index] = eventData;
+    }
+  } else {
+    events.push(eventData);
+  }
+  
+  saveEvents(events);
+  eventForm.classList.add("hidden");
+  resetEventForm();
+  renderEvents();
+  renderCalendar();
+  
+  // Fetch weather for the event
+  fetchEventWeather(eventData);
+  
+  // Setup reminder
+  setupReminder(eventData);
+}
+
+function deleteEvent(eventId) {
+  if (confirm("Are you sure you want to delete this event?")) {
+    const events = getEvents().filter(e => e.id !== eventId);
+    saveEvents(events);
+    
+    // Clear reminder
+    if (reminderIntervals[eventId]) {
+      clearInterval(reminderIntervals[eventId]);
+      delete reminderIntervals[eventId];
+    }
+    
+    // Clear reminder shown flag
+    localStorage.removeItem(`reminder_shown_${eventId}`);
+    
+    // Clear weather cache for this event
+    const weatherCache = JSON.parse(localStorage.getItem("skycast_event_weather") || "{}");
+    delete weatherCache[eventId];
+    localStorage.setItem("skycast_event_weather", JSON.stringify(weatherCache));
+    
+    renderEvents();
+    renderCalendar();
+  }
+}
+
+function editEvent(eventId) {
+  const events = getEvents();
+  const event = events.find(e => e.id === eventId);
+  
+  if (event) {
+    eventTitle.value = event.title;
+    eventDate.value = event.date;
+    eventTime.value = event.time;
+    eventLocation.value = event.location;
+    editingEventId.value = event.id;
+    eventForm.classList.remove("hidden");
+    eventTitle.focus();
+  }
+}
+
+function resetEventForm() {
+  eventTitle.value = "";
+  eventDate.value = "";
+  eventTime.value = "";
+  eventLocation.value = "";
+  editingEventId.value = "";
+}
+
+// Render Functions
+function renderEvents() {
+  const events = getEvents();
+  eventListContainer.innerHTML = "";
+  
+  if (events.length === 0) {
+    eventListContainer.innerHTML = '<p class="no-events">No events scheduled. Create one to get started!</p>';
+    return;
+  }
+  
+  events.forEach(event => {
+    const eventCard = createEventCard(event);
+    eventListContainer.appendChild(eventCard);
+  });
+}
+
+function createEventCard(event) {
+  const eventCard = document.createElement("div");
+  eventCard.className = "event-card";
+  
+  const eventDateTime = new Date(`${event.date}T${event.time}`);
+  const now = new Date();
+  const isPast = eventDateTime < now;
+  
+  if (isPast) {
+    eventCard.classList.add("event-past");
+  }
+  
+  // Get weather info if available
+  const weatherInfo = getEventWeatherInfo(event.id);
+  
+  eventCard.innerHTML = `
+    <div class="event-card-header">
+      <h4 class="event-title">${event.title}</h4>
+      <div class="event-actions">
+        <button class="event-edit-btn" data-event-id="${event.id}">✏️</button>
+        <button class="event-delete-btn" data-event-id="${event.id}">🗑️</button>
+      </div>
+    </div>
+    <div class="event-card-body">
+      <div class="event-details">
+        <div class="event-detail-item">
+          <span class="event-icon">📅</span>
+          <span>${formatEventDate(event.date)}</span>
+        </div>
+        <div class="event-detail-item">
+          <span class="event-icon">🕐</span>
+          <span>${formatEventTime(event.time)}</span>
+        </div>
+        <div class="event-detail-item">
+          <span class="event-icon">📍</span>
+          <span>${event.location}</span>
+        </div>
+      </div>
+      ${weatherInfo ? `
+        <div class="event-weather-info ${weatherInfo.alert ? 'weather-alert' : ''}">
+          <div class="event-weather-main">
+            <img src="${weatherInfo.icon}" alt="${weatherInfo.description}" class="event-weather-icon">
+            <div class="event-weather-details">
+              <span class="event-weather-temp">${weatherInfo.temp}°${currentUnit === "metric" ? "C" : "F"}</span>
+              <span class="event-weather-desc">${weatherInfo.description}</span>
+            </div>
+          </div>
+          ${weatherInfo.alert ? `<div class="weather-alert-badge">⚠️ ${weatherInfo.alert}</div>` : ''}
+          ${weatherInfo.suggestion ? `<div class="weather-suggestion">💡 ${weatherInfo.suggestion}</div>` : ''}
+          <button class="suggest-time-btn" data-event-id="${event.id}">🔍 Find Better Time</button>
+        </div>
+      ` : '<div class="event-weather-loading">Loading weather...</div>'}
+    </div>
+  `;
+  
+  // Attach event listeners
+  const editBtn = eventCard.querySelector('.event-edit-btn');
+  const deleteBtn = eventCard.querySelector('.event-delete-btn');
+  const suggestBtn = eventCard.querySelector('.suggest-time-btn');
+  
+  if (editBtn) {
+    editBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      editEvent(event.id);
+    });
+  }
+  
+  if (deleteBtn) {
+    deleteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteEvent(event.id);
+    });
+  }
+  
+  if (suggestBtn) {
+    suggestBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showBetterTimeSuggestions(event.id);
+    });
+  }
+  
+  return eventCard;
+}
+
+function renderCalendar() {
+  const events = getEvents();
+  const firstDay = new Date(currentCalendarYear, currentCalendarMonth, 1);
+  const lastDay = new Date(currentCalendarYear, currentCalendarMonth + 1, 0);
+  const daysInMonth = lastDay.getDate();
+  const startingDayOfWeek = firstDay.getDay();
+  
+  const monthNames = ["January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"];
+  
+  calendarMonthYear.textContent = `${monthNames[currentCalendarMonth]} ${currentCalendarYear}`;
+  
+  calendarContainer.innerHTML = "";
+  
+  // Day headers
+  const dayHeaders = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  dayHeaders.forEach(day => {
+    const dayHeader = document.createElement("div");
+    dayHeader.className = "calendar-day-header";
+    dayHeader.textContent = day;
+    calendarContainer.appendChild(dayHeader);
+  });
+  
+  // Empty cells for days before month starts
+  for (let i = 0; i < startingDayOfWeek; i++) {
+    const emptyCell = document.createElement("div");
+    emptyCell.className = "calendar-day empty";
+    calendarContainer.appendChild(emptyCell);
+  }
+  
+  // Days of the month
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dayCell = document.createElement("div");
+    dayCell.className = "calendar-day";
+    
+    const dateStr = `${currentCalendarYear}-${String(currentCalendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const dayEvents = events.filter(e => e.date === dateStr);
+    
+    const today = new Date();
+    if (currentCalendarYear === today.getFullYear() && 
+        currentCalendarMonth === today.getMonth() && 
+        day === today.getDate()) {
+      dayCell.classList.add("calendar-day-today");
+    }
+    
+    dayCell.innerHTML = `
+      <div class="calendar-day-number">${day}</div>
+      <div class="calendar-day-events">
+        ${dayEvents.slice(0, 3).map(event => `
+          <div class="calendar-event-dot" title="${event.title}"></div>
+        `).join('')}
+        ${dayEvents.length > 3 ? `<div class="calendar-event-more">+${dayEvents.length - 3}</div>` : ''}
+      </div>
+    `;
+    
+    if (dayEvents.length > 0) {
+      dayCell.classList.add("calendar-day-has-events");
+      dayCell.addEventListener("click", () => {
+        showDayEvents(dateStr, dayEvents);
+      });
+    }
+    
+    calendarContainer.appendChild(dayCell);
+  }
+}
+
+function showDayEvents(dateStr, events) {
+  const modal = document.createElement("div");
+  modal.className = "event-modal";
+  modal.innerHTML = `
+    <div class="event-modal-content">
+      <div class="event-modal-header">
+        <h3>Events on ${formatEventDate(dateStr)}</h3>
+        <button class="event-modal-close">✕</button>
+      </div>
+      <div class="event-modal-body">
+      </div>
+    </div>
+  `;
+  
+  const modalBody = modal.querySelector('.event-modal-body');
+  events.forEach(event => {
+    const eventCard = createEventCard(event);
+    modalBody.appendChild(eventCard);
+  });
+  
+  // Add close button listener
+  const closeBtn = modal.querySelector('.event-modal-close');
+  closeBtn.addEventListener('click', () => {
+    modal.remove();
+  });
+  
+  document.body.appendChild(modal);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) {
+      modal.remove();
+    }
+  });
+}
+
+// Weather Integration
+async function fetchEventWeather(event) {
+  try {
+    const eventDateTime = new Date(`${event.date}T${event.time}`);
+    const now = new Date();
+    
+    // Only fetch weather for future events
+    if (eventDateTime < now) {
+      return;
+    }
+    
+    // Get forecast for the event location
+    const response = await fetch(
+      `https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent(event.location)}&units=${currentUnit}&appid=${apiKey}`
+    );
+    
+    if (!response.ok) {
+      throw new Error("Weather data unavailable");
+    }
+    
+    const data = await response.json();
+    
+    // Find the forecast closest to event time
+    const eventTimestamp = eventDateTime.getTime() / 1000;
+    let closestForecast = data.list[0];
+    let minDiff = Math.abs(closestForecast.dt - eventTimestamp);
+    
+    data.list.forEach(forecast => {
+      const diff = Math.abs(forecast.dt - eventTimestamp);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestForecast = forecast;
+      }
+    });
+    
+    // Analyze weather and create alerts/suggestions
+    const weatherInfo = analyzeEventWeather(closestForecast, eventDateTime);
+    
+    // Store weather info
+    const weatherCache = JSON.parse(localStorage.getItem("skycast_event_weather") || "{}");
+    weatherCache[event.id] = {
+      ...weatherInfo,
+      timestamp: Date.now()
+    };
+    localStorage.setItem("skycast_event_weather", JSON.stringify(weatherCache));
+    
+    // Re-render events to show weather
+    renderEvents();
+    
+  } catch (error) {
+    console.error("Error fetching event weather:", error);
+  }
+}
+
+function analyzeEventWeather(forecast, eventDateTime) {
+  const temp = Math.round(forecast.main.temp);
+  const description = forecast.weather[0].description;
+  const icon = `https://openweathermap.org/img/wn/${forecast.weather[0].icon}@2x.png`;
+  const weatherMain = forecast.weather[0].main.toLowerCase();
+  const pop = forecast.pop || 0;
+  const feelsLike = Math.round(forecast.main.feels_like);
+  const windSpeed = forecast.wind.speed;
+  
+  let alert = null;
+  let suggestion = null;
+  
+  // Check for rain/storms
+  if (weatherMain.includes("rain") || weatherMain.includes("drizzle") || pop > 0.5) {
+    alert = "Rain expected";
+    suggestion = "Consider bringing an umbrella or rescheduling if outdoor event";
+  }
+  
+  // Check for storms
+  if (weatherMain.includes("thunderstorm")) {
+    alert = "Thunderstorm warning";
+    suggestion = "Consider rescheduling - severe weather expected";
+  }
+  
+  // Check for extreme heat
+  const tempUnit = currentUnit === "metric" ? "C" : "F";
+  const heatThreshold = currentUnit === "metric" ? 35 : 95;
+  if (feelsLike > heatThreshold) {
+    alert = "Extreme heat";
+    suggestion = "Stay hydrated and consider indoor venue or later time";
+  }
+  
+  // Check for extreme cold
+  const coldThreshold = currentUnit === "metric" ? 0 : 32;
+  if (feelsLike < coldThreshold) {
+    alert = "Very cold";
+    suggestion = "Dress warmly or consider indoor venue";
+  }
+  
+  // Check for high wind
+  const windThreshold = currentUnit === "metric" ? 10 : 22; // m/s to km/h or mph
+  if (windSpeed > windThreshold) {
+    if (!alert) {
+      alert = "High winds";
+      suggestion = "Be cautious of windy conditions";
+    }
+  }
+  
+  // Suggest better times if weather is poor
+  if (alert && !suggestion.includes("rescheduling")) {
+    suggestion += " - Check forecast for better times";
+  }
+  
+  return {
+    temp,
+    description: description.charAt(0).toUpperCase() + description.slice(1),
+    icon,
+    alert,
+    suggestion
+  };
+}
+
+function getEventWeatherInfo(eventId) {
+  const weatherCache = JSON.parse(localStorage.getItem("skycast_event_weather") || "{}");
+  const weather = weatherCache[eventId];
+  
+  // Return weather if it's less than 1 hour old
+  if (weather && Date.now() - weather.timestamp < 3600000) {
+    return weather;
+  }
+  
+  return null;
+}
+
+// Suggestion System
+async function suggestBetterTime(event) {
+  try {
+    const response = await fetch(
+      `https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent(event.location)}&units=${currentUnit}&appid=${apiKey}`
+    );
+    
+    if (!response.ok) {
+      return null;
+    }
+    
+    const data = await response.json();
+    const eventDateTime = new Date(`${event.date}T${event.time}`);
+    const eventHour = eventDateTime.getHours();
+    
+    // Look for better weather in the same day (within 6 hours)
+    const sameDayForecasts = data.list.filter(f => {
+      const forecastDate = new Date(f.dt * 1000);
+      return forecastDate.toDateString() === eventDateTime.toDateString() &&
+             Math.abs(forecastDate.getHours() - eventHour) <= 6;
+    });
+    
+    if (sameDayForecasts.length === 0) {
+      return null;
+    }
+    
+    // Find forecast with best weather (no rain, moderate temp)
+    const bestForecast = sameDayForecasts.reduce((best, current) => {
+      const currentMain = current.weather[0].main.toLowerCase();
+      const bestMain = best.weather[0].main.toLowerCase();
+      
+      // Prefer clear weather
+      if (currentMain.includes("clear") && !bestMain.includes("clear")) {
+        return current;
+      }
+      
+      // Avoid rain/storms
+      if (bestMain.includes("rain") || bestMain.includes("thunderstorm")) {
+        if (!currentMain.includes("rain") && !currentMain.includes("thunderstorm")) {
+          return current;
+        }
+      }
+      
+      // Prefer moderate temperatures
+      const currentFeelsLike = current.main.feels_like;
+      const bestFeelsLike = best.main.feels_like;
+      const idealTemp = currentUnit === "metric" ? 22 : 72;
+      
+      const currentDiff = Math.abs(currentFeelsLike - idealTemp);
+      const bestDiff = Math.abs(bestFeelsLike - idealTemp);
+      
+      if (currentDiff < bestDiff) {
+        return current;
+      }
+      
+      return best;
+    });
+    
+    if (bestForecast) {
+      const suggestedTime = new Date(bestForecast.dt * 1000);
+      const suggestedHour = suggestedTime.getHours();
+      const suggestedMinute = suggestedTime.getMinutes();
+      
+      if (suggestedHour !== eventHour || suggestedMinute !== eventDateTime.getMinutes()) {
+        return {
+          time: `${String(suggestedHour).padStart(2, '0')}:${String(suggestedMinute).padStart(2, '0')}`,
+          weather: analyzeEventWeather(bestForecast, suggestedTime)
+        };
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error("Error suggesting better time:", error);
+    return null;
+  }
+}
+
+// Reminder System
+function setupReminder(event) {
+  // Clear existing reminder
+  if (reminderIntervals[event.id]) {
+    clearInterval(reminderIntervals[event.id]);
+  }
+  
+  const eventDateTime = new Date(`${event.date}T${event.time}`);
+  const now = new Date();
+  const timeUntilEvent = eventDateTime - now;
+  
+  // Set reminder 1 hour before event
+  const reminderTime = timeUntilEvent - (60 * 60 * 1000);
+  
+  if (reminderTime > 0) {
+    reminderIntervals[event.id] = setTimeout(() => {
+      showReminder(event);
+    }, reminderTime);
+  }
+}
+
+function checkReminders() {
+  const events = getEvents();
+  const now = new Date();
+  
+  events.forEach(event => {
+    const eventDateTime = new Date(`${event.date}T${event.time}`);
+    const timeUntilEvent = eventDateTime - now;
+    const oneHour = 60 * 60 * 1000;
+    
+    // Show reminder if event is within 1 hour and hasn't been shown
+    if (timeUntilEvent > 0 && timeUntilEvent <= oneHour) {
+      const reminderShown = localStorage.getItem(`reminder_shown_${event.id}`);
+      if (!reminderShown) {
+        showReminder(event);
+        localStorage.setItem(`reminder_shown_${event.id}`, "true");
+      }
+    }
+  });
+}
+
+function showReminder(event) {
+  const weatherInfo = getEventWeatherInfo(event.id);
+  let message = `⏰ Reminder: ${event.title} is in 1 hour!\n`;
+  message += `📍 Location: ${event.location}\n`;
+  message += `🕐 Time: ${formatEventTime(event.time)}`;
+  
+  if (weatherInfo) {
+    message += `\n🌤️ Weather: ${weatherInfo.description}, ${weatherInfo.temp}°${currentUnit === "metric" ? "C" : "F"}`;
+    if (weatherInfo.alert) {
+      message += `\n⚠️ Alert: ${weatherInfo.alert}`;
+    }
+  }
+  
+  if (confirm(message + "\n\nWould you like to view this event?")) {
+    editEvent(event.id);
+  }
+}
+
+// Utility Functions
+function formatEventDate(dateStr) {
+  const date = new Date(dateStr + "T00:00:00");
+  const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+  return date.toLocaleDateString('en-US', options);
+}
+
+function formatEventTime(timeStr) {
+  const [hours, minutes] = timeStr.split(':');
+  const hour = parseInt(hours);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour % 12 || 12;
+  return `${displayHour}:${minutes} ${ampm}`;
+}
+
+// Initialize event planner on page load
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initEventPlanner);
+} else {
+  initEventPlanner();
+}
+
+// Show better time suggestions
+async function showBetterTimeSuggestions(eventId) {
+  const events = getEvents();
+  const event = events.find(e => e.id === eventId);
+  
+  if (!event) {
+    alert("Event not found!");
+    return;
+  }
+  
+  // Show loading message
+  const loadingMsg = "Searching for better times based on weather forecast...";
+  alert(loadingMsg);
+  
+  try {
+    const suggestion = await suggestBetterTime(event);
+    
+    if (suggestion && suggestion.time !== event.time) {
+      const message = `Found a better time for "${event.title}":\n\n` +
+        `Current: ${formatEventTime(event.time)}\n` +
+        `Suggested: ${formatEventTime(suggestion.time)}\n\n` +
+        `Weather: ${suggestion.weather.description}, ${suggestion.weather.temp}°${currentUnit === "metric" ? "C" : "F"}\n\n` +
+        `Would you like to update the event time?`;
+      
+      if (confirm(message)) {
+        event.time = suggestion.time;
+        const allEvents = getEvents();
+        const index = allEvents.findIndex(e => e.id === eventId);
+        if (index !== -1) {
+          allEvents[index] = event;
+          saveEvents(allEvents);
+          fetchEventWeather(event);
+          setupReminder(event);
+          renderEvents();
+          renderCalendar();
+          alert("Event time updated successfully!");
+        }
+      }
+    } else {
+      alert("No better time found for this event. The current time seems optimal based on the weather forecast!");
+    }
+  } catch (error) {
+    console.error("Error finding better time:", error);
+    alert("Unable to find better time suggestions. Please try again later.");
+  }
+}
+
+// Make functions available globally for onclick handlers
+window.editEvent = editEvent;
+window.deleteEvent = deleteEvent;
+window.showBetterTimeSuggestions = showBetterTimeSuggestions;
