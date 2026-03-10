@@ -89,25 +89,18 @@ cityInput.addEventListener("keypress", (e) => {
 });
 
 // Temperature toggle
-celsiusBtn.addEventListener("click", () => {
-  currentUnit = "metric";
-  celsiusBtn.classList.add("active");
-  fahrenheitBtn.classList.remove("active");
+const updateUnit = (unit) => {
+  currentUnit = unit;
+  celsiusBtn.classList.toggle("active", unit === "metric");
+  fahrenheitBtn.classList.toggle("active", unit === "imperial");
   if (currentCity) {
     getWeather(currentCity);
     getForecast(currentCity);
   }
-});
+};
 
-fahrenheitBtn.addEventListener("click", () => {
-  currentUnit = "imperial";
-  fahrenheitBtn.classList.add("active");
-  celsiusBtn.classList.remove("active");
-  if (currentCity) {
-    getWeather(currentCity);
-    getForecast(currentCity);
-  }
-});
+celsiusBtn.addEventListener("click", () => updateUnit("metric"));
+fahrenheitBtn.addEventListener("click", () => updateUnit("imperial"));
 
 // Geolocation
 locationBtn.addEventListener("click", () => {
@@ -206,17 +199,9 @@ function isOnline() {
   return navigator.onLine;
 }
 
-function showCacheIndicator() {
-  if (cacheIndicator) {
-    cacheIndicator.classList.remove("hidden");
-  }
-}
-
-function hideCacheIndicator() {
-  if (cacheIndicator) {
-    cacheIndicator.classList.add("hidden");
-  }
-}
+const toggleCacheIndicator = (show) => {
+  if (cacheIndicator) cacheIndicator.classList.toggle("hidden", !show);
+};
 
 // ==========================
 // API FUNCTIONS
@@ -229,8 +214,8 @@ async function getWeather(city) {
   if (!isOnline()) {
     const cachedData = getFromCache(cacheKey);
     if (cachedData) {
-      hideError();
-      showCacheIndicator();
+      showError("");
+      toggleCacheIndicator(true);
       displayWeather(cachedData);
       // Try to get cached forecast too
       const forecastCacheKey = getCacheKey('forecast', city.toLowerCase(), currentUnit);
@@ -239,19 +224,19 @@ async function getWeather(city) {
         displayForecast(cachedForecast);
         displayHourlyForecast(cachedForecast);
       }
-      hideLoading();
+      toggleLoading(false);
       return;
     } else {
       showError("No internet connection and no cached data available.");
-      hideLoading();
+      toggleLoading(false);
       return;
     }
   }
 
   try {
-    hideError();
-    hideCacheIndicator();
-    showLoading();
+    showError("");
+    toggleCacheIndicator(false);
+    toggleLoading(true);
     currentCity = city;
 
     const response = await fetch(
@@ -274,8 +259,8 @@ async function getWeather(city) {
     // Try to use cached data as fallback
     const cachedData = getFromCache(cacheKey);
     if (cachedData) {
-      hideError();
-      showCacheIndicator();
+      showError("");
+      toggleCacheIndicator(true);
       displayWeather(cachedData);
       // Try to get cached forecast too
       const forecastCacheKey = getCacheKey('forecast', city.toLowerCase(), currentUnit);
@@ -290,7 +275,7 @@ async function getWeather(city) {
       forecastSection.classList.add("hidden");
     }
   } finally {
-    hideLoading();
+    toggleLoading(false);
   }
 }
 
@@ -319,19 +304,19 @@ async function getWeatherByCoords(lat, lon) {
       } else {
         updateMapLocation(lat, lon);
       }
-      hideLoading();
+      toggleLoading(false);
       return;
     } else {
       showError("No internet connection and no cached data available.");
-      hideLoading();
+      toggleLoading(false);
       return;
     }
   }
 
   try {
-    hideError();
-    hideCacheIndicator();
-    showLoading();
+    showError("");
+    toggleCacheIndicator(false);
+    toggleLoading(true);
 
     const response = await fetch(
       `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=${currentUnit}&appid=${apiKey}`
@@ -386,7 +371,7 @@ async function getWeatherByCoords(lat, lon) {
       forecastSection.classList.add("hidden");
     }
   } finally {
-    hideLoading();
+    toggleLoading(false);
   }
 }
 
@@ -470,29 +455,25 @@ function displayWeather(data) {
 // LOADING FUNCTIONS
 // ==========================
 
-function showLoading() {
-  loading.classList.remove("hidden");
-  weatherCard.classList.add("hidden");
-  errorDiv.classList.add("hidden");
-}
-
-function hideLoading() {
-  loading.classList.add("hidden");
-}
+const toggleLoading = (show) => {
+  loading.classList.toggle("hidden", !show);
+  if (show) {
+    weatherCard.classList.add("hidden");
+    errorDiv.classList.add("hidden");
+  }
+};
 
 // ==========================
 // ERROR HANDLING
 // ==========================
 
-function showError(message) {
-  errorDiv.textContent = message;
-  errorDiv.classList.remove("hidden");
-  errorDiv.style.animation = "slideDown 0.3s ease-out";
-}
-
-function hideError() {
-  errorDiv.classList.add("hidden");
-}
+const showError = (message) => {
+  if (message) {
+    errorDiv.textContent = message;
+    errorDiv.style.animation = "slideDown 0.3s ease-out";
+  }
+  errorDiv.classList.toggle("hidden", !message);
+};
 
 // ==========================
 // BACKGROUND CHANGER
